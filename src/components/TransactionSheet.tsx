@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
 import type { Transaction, TxType, Account } from '../db/types'
 import { Sheet, Field, MoneyInput } from './ui'
 import { todayStr } from '../lib/format'
 import { TransferIcon } from './icons'
+import { recognizeImage } from '../lib/ocr'
+import { parseReceipt } from '../lib/parseReceipt'
 
 const typeTabs: { key: TxType; label: string; color: string }[] = [
   { key: 'expense', label: '지출', color: 'bg-rose-500' },
@@ -44,6 +46,13 @@ export function TransactionSheet({
   const [countsForBenefit, setCountsForBenefit] = useState(true)
   const [memberName, setMemberName] = useState('')
 
+  // 사진(OCR) 인식 상태
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [ocrState, setOcrState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [ocrProgress, setOcrProgress] = useState(0)
+  const [ocrRaw, setOcrRaw] = useState('')
+  const [showRaw, setShowRaw] = useState(false)
+
   // 초기값 설정
   useEffect(() => {
     if (!open) return
@@ -70,7 +79,39 @@ export function TransactionSheet({
       setCountsForBenefit(true)
       setMemberName('')
     }
+    setOcrState('idle')
+    setOcrProgress(0)
+    setOcrRaw('')
+    setShowRaw(false)
   }, [open, editing])
+
+  // 사진에서 거래 정보 자동 추출
+  async function handleImage(file: File) {
+    setOcrState('loading')
+    setOcrProgress(0)
+    try {
+      const text = await recognizeImage(file, (p) => setOcrProgress(p))
+      const parsed = parseReceipt(text)
+      setOcrRaw(parsed.raw)
+      setType(parsed.type)
+      if (parsed.amount) setAmount(parsed.amount)
+      if (parsed.date) setDate(parsed.date)
+      if (parsed.merchant) setMemo(parsed.merchant)
+      // 카드사/은행 힌트로 결제수단 자동 매칭
+      if (parsed.cardHint && accounts) {
+        const hit = accounts.find(
+          (a) =>
+            a.name.includes(parsed.cardHint!) ||
+            (parsed.cardHint!.length >= 2 && a.name.replace(/\s/g, '').includes(parsed.cardHint!))
+        )
+        if (hit) setAccountId(hit.id)
+      }
+      setOcrState('done')
+    } catch (e) {
+      console.error(e)
+      setOcrState('error')
+    }
+  }
 
   const selectedAccount = accounts?.find((a) => a.id === accountId)
   const isCardSelected = selectedAccount?.type === 'card'
@@ -121,6 +162,75 @@ export function TransactionSheet({
         </div>
       ) : (
         <>
+          {/* 사진으로 자동 채우기 */}
+          {!editing && (
+            <div className="mb-4">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) handleImage(f)
+                  e.target.value = ''
+                }}
+              />
+              {ocrState === 'loading' ? (
+                <div className="rounded-xl border border-brand/30 bg-brand/5 px-4 py-3">
+                  <p className="text-sm font-semibold text-brand mb-2">
+                    사진 인식 중… {Math.round(ocrProgress * 100)}%
+                  </p>
+                  <div className="h-2 rounded-full bg-brand/15 overflow-hidden">
+                    <div
+                      className="h-full bg-brand transition-all"
+                      style={{ width: `${Math.max(5, ocrProgress * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">
+                    처음 한 번은 인식 데이터를 받느라 조금 걸려요.
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full rounded-xl border-2 border-dashed border-brand/40 bg-brand/5 px-4 py-3 text-brand font-semibold text-sm flex items-center justify-center gap-2 active:scale-[.99] transition"
+                >
+                  📷 영수증·결제알림 사진으로 채우기
+                </button>
+              )}
+
+              {ocrState === 'done' && (
+                <div className="mt-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                  <p className="text-xs text-amber-700">
+                    사진에서 불러왔어요. <b>금액·가맹점이 틀릴 수 있으니</b> 확인 후 저장해 주세요.
+                  </p>
+                  {ocrRaw && (
+                    <button
+                      type="button"
+                      onClick={() => setShowRaw((v) => !v)}
+                      className="text-xs text-amber-600 underline mt-1"
+                    >
+                      {showRaw ? '인식된 원문 숨기기' : '인식된 원문 보기'}
+                    </button>
+                  )}
+                  {showRaw && (
+                    <pre className="text-[11px] text-slate-500 whitespace-pre-wrap mt-1 max-h-32 overflow-y-auto">
+                      {ocrRaw}
+                    </pre>
+                  )}
+                </div>
+              )}
+              {ocrState === 'error' && (
+                <p className="mt-2 text-xs text-rose-500">
+                  사진을 인식하지 못했어요. 더 또렷한 사진으로 다시 시도하거나 직접 입력해 주세요.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* 유형 탭 */}
           <div className="grid grid-cols-3 gap-2 mb-5">
             {typeTabs.map((t) => (
