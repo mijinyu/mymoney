@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f1f5f9;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* 숫자 입력에서 스핀 버튼 제거 */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-slate-100;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1 rounded-xl font-semibold transition active:scale-95;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white px-4 py-3 hover:bg-brand-dark;
+  }
+  .btn-ghost {
+    @apply btn bg-slate-100 text-slate-700 px-4 py-3 hover:bg-slate-200;
+  }
+  .input {
+    @apply w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none focus:border-brand focus:bg-white;
+  }
+  .label {
+    @apply block text-sm font-semibold text-slate-500 mb-1.5;
+  }
+  .chip {
+    @apply px-3 py-1.5 rounded-full text-sm font-medium border transition;
+  }
+}
+
+/* safe-area (아이폰 노치 등) */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
