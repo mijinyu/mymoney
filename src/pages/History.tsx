@@ -2,7 +2,13 @@ import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
 import type { Transaction, TxType } from '../db/types'
-import { monthSummary, categoryBreakdown } from '../lib/calc'
+import {
+  monthSummary,
+  categoryBreakdown,
+  isInstallment,
+  monthDiff,
+  expenseChargeInMonth,
+} from '../lib/calc'
 import {
   won,
   currentMonth,
@@ -21,14 +27,20 @@ const CAT_COLORS = [
 
 type FilterKind = 'all' | TxType
 
+interface HistoryEntry {
+  key: string
+  tx: Transaction
+  date: string
+  amount: number
+  seq?: number
+  total?: number
+}
+
 export default function History() {
   const [month, setMonth] = useState(currentMonth())
   const [filter, setFilter] = useState<FilterKind>('all')
   const accounts = useLiveQuery(() => db.accounts.toArray(), [])
-  const allTxs = useLiveQuery(
-    () => db.transactions.where('date').startsWith(month).toArray(),
-    [month]
-  )
+  const allTxs = useLiveQuery(() => db.transactions.toArray(), [])
   const openTx = useAddTx()
 
   const accName = (id?: number) =>
@@ -44,27 +56,49 @@ export default function History() {
   )
   const totalExpense = breakdown.reduce((s, b) => s + b.amount, 0)
 
-  const filtered = useMemo(() => {
+  // 이번 달에 실제로 잡히는 항목으로 펼침 (지난달 할부의 이번 달 청구분 포함)
+  const entries = useMemo<HistoryEntry[]>(() => {
     if (!allTxs) return []
-    const list = filter === 'all' ? allTxs : allTxs.filter((t) => t.type === filter)
-    return [...list].sort((a, b) =>
-      a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt
+    const out: HistoryEntry[] = []
+    for (const t of allTxs) {
+      if (t.type === 'expense' && isInstallment(t)) {
+        const idx = monthDiff(month, t.date.slice(0, 7))
+        if (idx < 0 || idx >= t.installmentMonths!) continue
+        out.push({
+          key: `${t.id}-${idx}`,
+          tx: t,
+          date: `${month}-${t.date.slice(8, 10)}`,
+          amount: expenseChargeInMonth(t, month),
+          seq: idx + 1,
+          total: t.installmentMonths,
+        })
+      } else if (t.date.startsWith(month)) {
+        out.push({ key: String(t.id), tx: t, date: t.date, amount: t.amount })
+      }
+    }
+    const list =
+      filter === 'all' ? out : out.filter((e) => e.tx.type === filter)
+    return list.sort((a, b) =>
+      a.date < b.date ? 1 : a.date > b.date ? -1 : b.tx.createdAt - a.tx.createdAt
     )
-  }, [allTxs, filter])
+  }, [allTxs, month, filter])
 
   // 날짜별 그룹핑
   const byDate = useMemo(() => {
-    const map = new Map<string, Transaction[]>()
-    for (const t of filtered) {
-      if (!map.has(t.date)) map.set(t.date, [])
-      map.get(t.date)!.push(t)
+    const map = new Map<string, HistoryEntry[]>()
+    for (const e of entries) {
+      if (!map.has(e.date)) map.set(e.date, [])
+      map.get(e.date)!.push(e)
     }
     return [...map.entries()]
-  }, [filtered])
+  }, [entries])
 
-  async function del(t: Transaction) {
-    if (!confirm('이 거래를 삭제할까요?')) return
-    await db.transactions.delete(t.id!)
+  async function del(e: HistoryEntry) {
+    const msg = e.total
+      ? '이 할부 거래 전체를 삭제할까요? (모든 회차가 함께 삭제돼요)'
+      : '이 거래를 삭제할까요?'
+    if (!confirm(msg)) return
+    await db.transactions.delete(e.tx.id!)
   }
 
   return (
@@ -192,47 +226,55 @@ export default function History() {
                   {dateLabel(date)}
                 </p>
                 <div className="card divide-y divide-slate-50">
-                  {items.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center gap-3 px-4 py-3 group"
-                      onClick={() => t.type !== 'transfer' && openTx(t)}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">
-                          {t.type === 'transfer'
-                            ? `${accName(t.accountId)} → ${accName(t.toAccountId)}`
-                            : t.memo || t.category || '내역'}
+                  {items.map((e) => {
+                    const t = e.tx
+                    return (
+                      <div
+                        key={e.key}
+                        className="flex items-center gap-3 px-4 py-3 group"
+                        onClick={() => t.type !== 'transfer' && openTx(t)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">
+                            {t.type === 'transfer'
+                              ? `${accName(t.accountId)} → ${accName(t.toAccountId)}`
+                              : t.memo || t.category || '내역'}
+                            {e.total ? (
+                              <span className="ml-1 text-[11px] font-semibold text-indigo-500">
+                                할부 {e.seq}/{e.total}
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="text-xs text-slate-400 truncate">
+                            {t.type === 'transfer' ? '이체' : accName(t.accountId)}
+                            {t.category && t.type !== 'transfer' ? ` · ${t.category}` : ''}
+                            {t.isAllowance ? ' · 용돈' : ''}
+                          </p>
+                        </div>
+                        <p
+                          className={`font-bold text-sm ${
+                            t.type === 'income'
+                              ? 'text-blue-600'
+                              : t.type === 'expense'
+                                ? 'text-rose-600'
+                                : 'text-slate-500'
+                          }`}
+                        >
+                          {t.type === 'income' ? '+' : t.type === 'expense' ? '-' : ''}
+                          {won(e.amount)}
                         </p>
-                        <p className="text-xs text-slate-400 truncate">
-                          {t.type === 'transfer' ? '이체' : accName(t.accountId)}
-                          {t.category && t.type !== 'transfer' ? ` · ${t.category}` : ''}
-                          {t.isAllowance ? ' · 용돈' : ''}
-                        </p>
+                        <button
+                          onClick={(ev) => {
+                            ev.stopPropagation()
+                            del(e)
+                          }}
+                          className="p-1 text-slate-300 hover:text-rose-500"
+                        >
+                          <TrashIcon width={16} height={16} />
+                        </button>
                       </div>
-                      <p
-                        className={`font-bold text-sm ${
-                          t.type === 'income'
-                            ? 'text-blue-600'
-                            : t.type === 'expense'
-                              ? 'text-rose-600'
-                              : 'text-slate-500'
-                        }`}
-                      >
-                        {t.type === 'income' ? '+' : t.type === 'expense' ? '-' : ''}
-                        {won(t.amount)}
-                      </p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          del(t)
-                        }}
-                        className="p-1 text-slate-300 hover:text-rose-500"
-                      >
-                        <TrashIcon width={16} height={16} />
-                      </button>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}

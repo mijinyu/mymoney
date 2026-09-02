@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
 import type { Account, AccountType, CardAccount, GroupAccount } from '../db/types'
-import { accountBalance, cardSpentInMonth } from '../lib/calc'
+import { accountBalance, cardSpentInMonth, cardInstallmentRemaining } from '../lib/calc'
 import { won, currentMonth } from '../lib/format'
 import { AccountSheet } from '../components/AccountSheet'
 import { Progress, Empty } from '../components/ui'
@@ -123,6 +123,11 @@ export default function Accounts() {
                     cardSpent={
                       a.type === 'card' ? cardSpentInMonth(a.id!, txs, month) : 0
                     }
+                    installment={
+                      a.type === 'card'
+                        ? cardInstallmentRemaining(a.id!, txs, month)
+                        : { total: 0, count: 0 }
+                    }
                     onEdit={() => openEdit(a)}
                     onDelete={() => remove(a)}
                   />
@@ -148,6 +153,7 @@ function AccountCard({
   account,
   balance,
   cardSpent,
+  installment,
   onEdit,
   onDelete,
 }: {
@@ -155,6 +161,7 @@ function AccountCard({
   month: string
   balance: number
   cardSpent: number
+  installment: { total: number; count: number }
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -178,9 +185,16 @@ function AccountCard({
         <div className="flex-1 min-w-0">
           <p className="font-semibold">{account.name}</p>
           {account.type === 'card' ? (
-            <p className="text-sm text-slate-500">
-              이번 달 사용 <b className="text-rose-600">{won(cardSpent)}</b>
-            </p>
+            <>
+              <p className="text-sm text-slate-500">
+                이번 달 청구 <b className="text-rose-600">{won(cardSpent)}</b>
+              </p>
+              {installment.total > 0 && (
+                <p className="text-xs text-indigo-500 mt-0.5">
+                  할부 잔액 {won(installment.total)} · {installment.count}건 진행중
+                </p>
+              )}
+            </>
           ) : (
             <p className="text-sm text-slate-500">
               잔액 <b className="text-slate-800">{won(balance)}</b>

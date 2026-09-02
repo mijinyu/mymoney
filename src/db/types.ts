@@ -73,6 +73,8 @@ export interface Transaction {
   countsForBenefit?: boolean
   /** 카드값 자동이체(출금) 기록인지 */
   isCardWithdrawal?: boolean
+  /** 할부 개월수 (2 이상이면 할부). amount는 총 결제금액이고, 매달 amount/개월만큼 청구됨 */
+  installmentMonths?: number
   /** 모임통장: 누가 낸/받은 돈인지 */
   memberName?: string
   createdAt: number

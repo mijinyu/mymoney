@@ -43,6 +43,7 @@ export function TransactionSheet({
   const [isAllowance, setIsAllowance] = useState(false)
   const [countsForBenefit, setCountsForBenefit] = useState(true)
   const [memberName, setMemberName] = useState('')
+  const [installmentMonths, setInstallmentMonths] = useState(1) // 1 = 일시불
 
   // 초기값 설정
   useEffect(() => {
@@ -58,6 +59,7 @@ export function TransactionSheet({
       setIsAllowance(!!editing.isAllowance)
       setCountsForBenefit(editing.countsForBenefit !== false)
       setMemberName(editing.memberName || '')
+      setInstallmentMonths(editing.installmentMonths || 1)
     } else {
       setType('expense')
       setAmount(0)
@@ -69,6 +71,7 @@ export function TransactionSheet({
       setIsAllowance(false)
       setCountsForBenefit(true)
       setMemberName('')
+      setInstallmentMonths(1)
     }
   }, [open, editing])
 
@@ -102,6 +105,10 @@ export function TransactionSheet({
       isAllowance: type === 'expense' ? isAllowance : undefined,
       countsForBenefit:
         type === 'expense' && isCardSelected ? countsForBenefit : undefined,
+      installmentMonths:
+        type === 'expense' && isCardSelected && installmentMonths >= 2
+          ? installmentMonths
+          : undefined,
       memberName: isGroupSelected ? memberName || undefined : undefined,
       createdAt: editing?.createdAt ?? Date.now(),
     }
@@ -240,6 +247,34 @@ export function TransactionSheet({
                   </option>
                 ))}
               </select>
+            </Field>
+          )}
+
+          {/* 할부 (카드 지출 전용) */}
+          {type === 'expense' && isCardSelected && (
+            <Field label="할부">
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 6, 9, 12, 24].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setInstallmentMonths(m)}
+                    className={`chip ${
+                      installmentMonths === m
+                        ? 'bg-brand text-white border-brand'
+                        : 'bg-white border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {m === 1 ? '일시불' : `${m}개월`}
+                  </button>
+                ))}
+              </div>
+              {installmentMonths >= 2 && amount > 0 && (
+                <p className="text-xs text-slate-500 mt-2">
+                  매달 약 {Math.floor(amount / installmentMonths).toLocaleString('ko-KR')}원씩{' '}
+                  {installmentMonths}개월 청구돼요.
+                </p>
+              )}
             </Field>
           )}
 

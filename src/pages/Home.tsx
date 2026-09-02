@@ -6,6 +6,7 @@ import {
   monthSummary,
   allowanceSpent,
   upcomingCardBills,
+  cardInstallmentRemaining,
 } from '../lib/calc'
 import { won, currentMonth, monthLabel, daysUntil } from '../lib/format'
 import { Progress } from '../components/ui'
@@ -86,6 +87,7 @@ export default function Home() {
               const target = b.card.benefitTarget || 0
               const progress = b.amount
               const left = daysUntil(b.day || 1)
+              const inst = cardInstallmentRemaining(b.card.id!, txs, month)
               return (
                 <div key={b.card.id} className="card p-4">
                   <div className="flex items-center justify-between">
@@ -107,6 +109,11 @@ export default function Home() {
                     </div>
                     <p className="font-bold text-slate-800">{won(b.amount)}</p>
                   </div>
+                  {inst.total > 0 && (
+                    <p className="text-xs text-indigo-500 mt-2">
+                      할부 잔액 {won(inst.total)} · {inst.count}건 진행중
+                    </p>
+                  )}
                   {target > 0 && (
                     <div className="mt-3">
                       <div className="flex justify-between text-xs text-slate-400 mb-1">
