@@ -11,16 +11,8 @@ import {
 } from '../lib/calc'
 import { won, currentMonth, monthLabel, daysUntil } from '../lib/format'
 import { Progress } from '../components/ui'
-import {
-  CardIcon,
-  PiggyIcon,
-  ArrowRight,
-  CoinIcon,
-  RefreshIcon,
-  BankIcon,
-  CashIcon,
-  GroupIcon,
-} from '../components/icons'
+import { PiggyIcon, ArrowRight, CoinIcon, RefreshIcon } from '../components/icons'
+import { AccountAvatar } from '../components/AccountAvatar'
 import { forceUpdate } from '../lib/update'
 import { useBoolSetting, ALLOWANCE_ENABLED } from '../lib/settings'
 import type { CardAccount } from '../db/types'
@@ -126,12 +118,7 @@ export default function Home() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white"
-                        style={{ background: b.card.color }}
-                      >
-                        <CardIcon width={18} height={18} />
-                      </span>
+                      <AccountAvatar account={b.card} size={36} />
                       <div>
                         <p className="font-semibold text-sm">{b.card.name}</p>
                         {b.day && (
@@ -188,18 +175,7 @@ export default function Home() {
                 to={`/history?acc=${a.id}`}
                 className="card p-4 flex items-center gap-3 active:bg-slate-50"
               >
-                <span
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
-                  style={{ background: a.color }}
-                >
-                  {a.type === 'bank' ? (
-                    <BankIcon width={18} height={18} />
-                  ) : a.type === 'cash' ? (
-                    <CashIcon width={18} height={18} />
-                  ) : (
-                    <GroupIcon width={18} height={18} />
-                  )}
-                </span>
+                <AccountAvatar account={a} size={38} />
                 <p className="flex-1 font-semibold text-sm truncate">{a.name}</p>
                 <p className="font-bold text-slate-800">
                   {won(accountBalance(a, txs))}

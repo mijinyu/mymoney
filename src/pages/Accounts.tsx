@@ -5,6 +5,7 @@ import type { Account, AccountType, CardAccount, GroupAccount } from '../db/type
 import { accountBalance, cardSpentInMonth, cardInstallmentRemaining } from '../lib/calc'
 import { won, currentMonth } from '../lib/format'
 import { AccountSheet } from '../components/AccountSheet'
+import { AccountAvatar } from '../components/AccountAvatar'
 import { useBoolSetting, setSetting, ALLOWANCE_ENABLED } from '../lib/settings'
 import { Progress, Empty } from '../components/ui'
 import {
@@ -200,20 +201,7 @@ function AccountCard({
   return (
     <div className="card p-4">
       <div className="flex items-start gap-3">
-        <span
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
-          style={{ background: account.color }}
-        >
-          {account.type === 'card' ? (
-            <CardIcon width={20} height={20} />
-          ) : account.type === 'bank' ? (
-            <BankIcon width={20} height={20} />
-          ) : account.type === 'cash' ? (
-            <CashIcon width={20} height={20} />
-          ) : (
-            <GroupIcon width={20} height={20} />
-          )}
-        </span>
+        <AccountAvatar account={account} size={40} />
         <div className="flex-1 min-w-0">
           <p className="font-semibold">{account.name}</p>
           {account.type === 'card' ? (
