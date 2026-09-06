@@ -131,8 +131,15 @@ export default function Home() {
                     <p className="font-bold text-slate-800">{won(b.amount)}</p>
                   </div>
                   {inst.count > 0 && (
-                    <p className="text-xs text-indigo-500 mt-2">
-                      이번 달 할부 {won(inst.amount)} · {inst.count}건
+                    <p className="text-xs mt-2">
+                      <span className="text-slate-500">
+                        할부 제외{' '}
+                        <b className="text-slate-700">{won(b.amount - inst.amount)}</b>
+                      </span>
+                      <span className="text-slate-300"> · </span>
+                      <span className="text-indigo-500">
+                        할부 {won(inst.amount)} · {inst.count}건
+                      </span>
                     </p>
                   )}
                   {target > 0 && (
