@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { db } from '../db/database'
+import { forceUpdate, BUILD_TIME } from '../lib/update'
 import {
   CoinIcon,
   PiggyIcon,
@@ -118,11 +119,17 @@ export default function More() {
       </section>
 
       <section className="px-5 mt-6">
+        <button onClick={forceUpdate} className="btn-ghost w-full mb-3">
+          ↻ 최신 버전으로 업데이트
+        </button>
         <div className="card p-4 text-center">
           <p className="text-sm font-semibold">나만의 가계부</p>
           <p className="text-xs text-slate-400 mt-0.5">
-            카드·은행·현금·모임통장을 한 곳에서 · v0.1
+            카드·은행·현금·모임통장을 한 곳에서
           </p>
+          {BUILD_TIME && (
+            <p className="text-[11px] text-slate-300 mt-1">업데이트: {BUILD_TIME}</p>
+          )}
         </div>
       </section>
     </div>

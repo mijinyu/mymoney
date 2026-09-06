@@ -112,6 +112,12 @@ export const EditIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M13.5 6.5l4 4" />
   </svg>
 )
+export const RefreshIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+    <path d="M21 3v5h-5" />
+  </svg>
+)
 export const TransferIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="M4 8h13l-3-3M20 16H7l3 3" />

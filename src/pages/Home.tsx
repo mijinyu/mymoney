@@ -10,7 +10,8 @@ import {
 } from '../lib/calc'
 import { won, currentMonth, monthLabel, daysUntil } from '../lib/format'
 import { Progress } from '../components/ui'
-import { CardIcon, PiggyIcon, ArrowRight, CoinIcon } from '../components/icons'
+import { CardIcon, PiggyIcon, ArrowRight, CoinIcon, RefreshIcon } from '../components/icons'
+import { forceUpdate } from '../lib/update'
 import type { CardAccount } from '../db/types'
 
 export default function Home() {
@@ -48,9 +49,18 @@ export default function Home() {
   return (
     <div className="pt-safe">
       {/* 헤더 */}
-      <header className="px-5 pt-6 pb-4">
-        <p className="text-sm text-slate-400">{monthLabel(month)}</p>
-        <h1 className="text-2xl font-extrabold tracking-tight">나만의 가계부</h1>
+      <header className="px-5 pt-6 pb-4 flex items-start justify-between">
+        <div>
+          <p className="text-sm text-slate-400">{monthLabel(month)}</p>
+          <h1 className="text-2xl font-extrabold tracking-tight">나만의 가계부</h1>
+        </div>
+        <button
+          onClick={forceUpdate}
+          className="flex items-center gap-1 rounded-full bg-white border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 active:scale-95 transition shadow-sm"
+          aria-label="최신 버전으로 새로고침"
+        >
+          <RefreshIcon width={16} height={16} /> 업데이트
+        </button>
       </header>
 
       {/* 자산 요약 카드 */}

@@ -5,6 +5,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vitejs.dev/config/
 export default defineConfig({
   base: './',
+  define: {
+    __BUILD_TIME__: JSON.stringify(
+      new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).slice(0, 16)
+    ),
+  },
   plugins: [
     react(),
     VitePWA({
