@@ -10,7 +10,16 @@ import {
 } from '../lib/calc'
 import { won, currentMonth, monthLabel, daysUntil } from '../lib/format'
 import { Progress } from '../components/ui'
-import { CardIcon, PiggyIcon, ArrowRight, CoinIcon, RefreshIcon } from '../components/icons'
+import {
+  CardIcon,
+  PiggyIcon,
+  ArrowRight,
+  CoinIcon,
+  RefreshIcon,
+  BankIcon,
+  CashIcon,
+  GroupIcon,
+} from '../components/icons'
 import { forceUpdate } from '../lib/update'
 import type { CardAccount } from '../db/types'
 
@@ -33,6 +42,7 @@ export default function Home() {
     .reduce((s, a) => s + accountBalance(a, txs), 0)
 
   const cards = active.filter((a): a is CardAccount => a.type === 'card')
+  const depositAccounts = active.filter((a) => a.type !== 'card')
   const bills = upcomingCardBills(cards, txs, month)
   const totalCardBill = bills.reduce((s, b) => s + b.amount, 0)
 
@@ -151,6 +161,44 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* 은행·현금·모임통장 계좌 */}
+      {depositAccounts.length > 0 && (
+        <section className="px-5 mt-5">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-bold text-slate-800">🏦 내 계좌</h2>
+            <Link to="/accounts" className="text-xs text-slate-400">
+              관리
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {depositAccounts.map((a) => (
+              <Link
+                key={a.id}
+                to={`/history?acc=${a.id}`}
+                className="card p-4 flex items-center gap-3 active:bg-slate-50"
+              >
+                <span
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+                  style={{ background: a.color }}
+                >
+                  {a.type === 'bank' ? (
+                    <BankIcon width={18} height={18} />
+                  ) : a.type === 'cash' ? (
+                    <CashIcon width={18} height={18} />
+                  ) : (
+                    <GroupIcon width={18} height={18} />
+                  )}
+                </span>
+                <p className="flex-1 font-semibold text-sm truncate">{a.name}</p>
+                <p className="font-bold text-slate-800">
+                  {won(accountBalance(a, txs))}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 용돈 */}
       <section className="px-5 mt-5">
