@@ -54,6 +54,7 @@ export function TransactionSheet({
   const [addingCat, setAddingCat] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [customInst, setCustomInst] = useState(false)
+  const [instText, setInstText] = useState('') // 직접입력 원본 문자열
 
   // 초기값 설정
   useEffect(() => {
@@ -87,7 +88,9 @@ export function TransactionSheet({
     setAddingCat(false)
     setNewCatName('')
     const im = editing?.installmentMonths || 1
-    setCustomInst(im >= 2 && ![2, 3, 6, 9, 12, 24].includes(im))
+    const isCustom = im >= 2 && ![2, 3, 6, 9, 12, 24].includes(im)
+    setCustomInst(isCustom)
+    setInstText(isCustom ? String(im) : '')
   }, [open, editing])
 
   // 분류 즉석 추가
@@ -353,7 +356,7 @@ export function TransactionSheet({
                   type="button"
                   onClick={() => {
                     setCustomInst(true)
-                    if (installmentMonths < 2) setInstallmentMonths(2)
+                    setInstText(installmentMonths >= 2 ? String(installmentMonths) : '')
                   }}
                   className={`chip ${
                     customInst
@@ -367,17 +370,20 @@ export function TransactionSheet({
               {customInst && (
                 <div className="flex items-center gap-2 mt-2">
                   <input
-                    type="number"
                     inputMode="numeric"
-                    min={2}
-                    max={60}
                     autoFocus
                     className="input w-28"
-                    value={installmentMonths >= 2 ? installmentMonths : ''}
+                    value={instText}
                     placeholder="개월수"
                     onChange={(e) => {
-                      const n = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10)
-                      setInstallmentMonths(Number.isNaN(n) ? 0 : Math.min(60, n))
+                      let digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
+                      let n = digits ? parseInt(digits, 10) : 0
+                      if (n > 60) {
+                        n = 60
+                        digits = '60'
+                      }
+                      setInstText(digits)
+                      setInstallmentMonths(n)
                     }}
                   />
                   <span className="text-sm text-slate-500">개월</span>
