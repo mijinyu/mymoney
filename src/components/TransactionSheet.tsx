@@ -6,6 +6,7 @@ import { Sheet, Field, MoneyInput } from './ui'
 import { todayStr } from '../lib/format'
 import { TransferIcon, PlusIcon } from './icons'
 import { AccountSheet } from './AccountSheet'
+import { CATEGORY_EMOJIS, DEFAULT_CATEGORY_EMOJI } from '../lib/emojis'
 
 const accIcon = (t: AccountType) =>
   t === 'card' ? '💳' : t === 'bank' ? '🏦' : t === 'cash' ? '💵' : '👥'
@@ -54,6 +55,7 @@ export function TransactionSheet({
   const [accSheetOpen, setAccSheetOpen] = useState(false)
   const [addingCat, setAddingCat] = useState(false)
   const [newCatName, setNewCatName] = useState('')
+  const [newCatEmoji, setNewCatEmoji] = useState(DEFAULT_CATEGORY_EMOJI)
   const [customInst, setCustomInst] = useState(false)
   const [instText, setInstText] = useState('') // 직접입력 원본 문자열
 
@@ -90,6 +92,7 @@ export function TransactionSheet({
     setAccSheetOpen(false)
     setAddingCat(false)
     setNewCatName('')
+    setNewCatEmoji(DEFAULT_CATEGORY_EMOJI)
     const im = editing?.installmentMonths || 1
     const isCustom = im >= 2 && ![2, 3, 6, 9, 12, 24].includes(im)
     setCustomInst(isCustom)
@@ -108,10 +111,11 @@ export function TransactionSheet({
       setCategory(existing.name)
     } else {
       const max = (categories || []).reduce((m, c) => Math.max(m, c.order || 0), 0)
-      await db.categories.add({ name: nm, emoji: '✏️', kind, order: max + 1 })
+      await db.categories.add({ name: nm, emoji: newCatEmoji, kind, order: max + 1 })
       setCategory(nm)
     }
     setNewCatName('')
+    setNewCatEmoji(DEFAULT_CATEGORY_EMOJI)
     setAddingCat(false)
   }
 
@@ -301,23 +305,43 @@ export function TransactionSheet({
                 </button>
               </div>
               {addingCat && (
-                <div className="flex gap-2 mt-2">
-                  <input
-                    className="input"
-                    autoFocus
-                    value={newCatName}
-                    placeholder="새 분류 이름"
-                    onChange={(e) => setNewCatName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addCategory()}
-                  />
-                  <button
-                    type="button"
-                    className="btn-primary px-4 shrink-0 disabled:opacity-40"
-                    disabled={!newCatName.trim()}
-                    onClick={addCategory}
-                  >
-                    추가
-                  </button>
+                <div className="mt-2 rounded-xl border border-slate-200 p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-xl shrink-0">
+                      {newCatEmoji}
+                    </span>
+                    <input
+                      className="input flex-1"
+                      autoFocus
+                      value={newCatName}
+                      placeholder="새 분류 이름"
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addCategory()}
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary px-4 shrink-0 disabled:opacity-40"
+                      disabled={!newCatName.trim()}
+                      onClick={addCategory}
+                    >
+                      추가
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2 mb-1">이모지 선택</p>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto overscroll-contain">
+                    {CATEGORY_EMOJIS.map((e) => (
+                      <button
+                        key={e}
+                        type="button"
+                        onClick={() => setNewCatEmoji(e)}
+                        className={`w-8 h-8 rounded-lg text-lg shrink-0 ${
+                          newCatEmoji === e ? 'bg-brand/15 ring-1 ring-brand' : 'bg-slate-50'
+                        }`}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </Field>

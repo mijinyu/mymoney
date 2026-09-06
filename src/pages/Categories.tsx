@@ -3,13 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { db } from '../db/database'
 import { ChevronLeft, PlusIcon, TrashIcon } from '../components/icons'
-
-const EMOJIS = ['🍚', '☕', '🚌', '🛒', '🏠', '🎬', '🛍️', '💊', '🎁', '💳', '💰', '🧧', '📈', '🏦', '✏️', '🍺', '⛽', '🐶', '📚', '💪']
+import { CATEGORY_EMOJIS, DEFAULT_CATEGORY_EMOJI } from '../lib/emojis'
 
 export default function Categories() {
   const [kind, setKind] = useState<'expense' | 'income'>('expense')
   const [name, setName] = useState('')
-  const [emoji, setEmoji] = useState('✏️')
+  const [emoji, setEmoji] = useState(DEFAULT_CATEGORY_EMOJI)
   const cats = useLiveQuery(
     () => db.categories.where('kind').equals(kind).sortBy('order'),
     [kind]
@@ -20,7 +19,7 @@ export default function Categories() {
     const max = (cats || []).reduce((m, c) => Math.max(m, c.order || 0), 0)
     await db.categories.add({ name: name.trim(), emoji, kind, order: max + 1 })
     setName('')
-    setEmoji('✏️')
+    setEmoji(DEFAULT_CATEGORY_EMOJI)
   }
   async function del(id?: number) {
     if (id == null) return
@@ -65,12 +64,13 @@ export default function Categories() {
               <PlusIcon width={18} height={18} />
             </button>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {EMOJIS.map((e) => (
+          <p className="text-xs text-slate-400 mb-1.5">이모지 선택</p>
+          <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto overscroll-contain">
+            {CATEGORY_EMOJIS.map((e) => (
               <button
                 key={e}
                 onClick={() => setEmoji(e)}
-                className={`w-9 h-9 rounded-lg text-lg ${
+                className={`w-9 h-9 rounded-lg text-lg shrink-0 ${
                   emoji === e ? 'bg-brand/15 ring-1 ring-brand' : 'bg-slate-50'
                 }`}
               >
