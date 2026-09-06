@@ -214,6 +214,26 @@ export function cardInstallments(
     .sort((a, b) => (a.tx.date < b.tx.date ? -1 : 1))
 }
 
+/** 특정 카드의 '이번 달 할부 청구액'과 건수 */
+export function cardInstallmentThisMonth(
+  cardId: number,
+  txs: Transaction[],
+  month: string
+): { amount: number; count: number } {
+  let amount = 0
+  let count = 0
+  for (const t of txs) {
+    if (t.type === 'expense' && t.accountId === cardId && isInstallment(t)) {
+      const c = expenseChargeInMonth(t, month)
+      if (c > 0) {
+        amount += c
+        count++
+      }
+    }
+  }
+  return { amount, count }
+}
+
 /** 카드의 남은 할부 총액 */
 export function cardInstallmentRemaining(
   cardId: number,

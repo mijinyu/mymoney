@@ -6,7 +6,7 @@ import {
   monthSummary,
   allowanceSpent,
   upcomingCardBills,
-  cardInstallmentRemaining,
+  cardInstallmentThisMonth,
 } from '../lib/calc'
 import { won, currentMonth, monthLabel, daysUntil } from '../lib/format'
 import { Progress } from '../components/ui'
@@ -109,7 +109,7 @@ export default function Home() {
               const target = b.card.benefitTarget || 0
               const progress = b.amount
               const left = daysUntil(b.day || 1)
-              const inst = cardInstallmentRemaining(b.card.id!, txs, month)
+              const inst = cardInstallmentThisMonth(b.card.id!, txs, month)
               return (
                 <Link
                   key={b.card.id}
@@ -135,9 +135,9 @@ export default function Home() {
                     </div>
                     <p className="font-bold text-slate-800">{won(b.amount)}</p>
                   </div>
-                  {inst.total > 0 && (
+                  {inst.count > 0 && (
                     <p className="text-xs text-indigo-500 mt-2">
-                      할부 잔액 {won(inst.total)} · {inst.count}건 진행중
+                      이번 달 할부 {won(inst.amount)} · {inst.count}건
                     </p>
                   )}
                   {target > 0 && (
