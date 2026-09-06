@@ -1,6 +1,34 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { CloseIcon } from './icons'
 import { won } from '../lib/format'
+
+// 배경 스크롤 잠금 (여러 시트가 겹쳐도 안전하게 참조 카운트)
+let lockCount = 0
+let savedScrollY = 0
+function lockBody() {
+  if (lockCount === 0) {
+    savedScrollY = window.scrollY
+    const b = document.body
+    b.style.position = 'fixed'
+    b.style.top = `-${savedScrollY}px`
+    b.style.left = '0'
+    b.style.right = '0'
+    b.style.width = '100%'
+  }
+  lockCount++
+}
+function unlockBody() {
+  lockCount = Math.max(0, lockCount - 1)
+  if (lockCount === 0) {
+    const b = document.body
+    b.style.position = ''
+    b.style.top = ''
+    b.style.left = ''
+    b.style.right = ''
+    b.style.width = ''
+    window.scrollTo(0, savedScrollY)
+  }
+}
 
 // 아래에서 올라오는 바텀시트/모달
 export function Sheet({
@@ -14,23 +42,49 @@ export function Sheet({
   title: string
   children: ReactNode
 }) {
+  // 보이는 영역 높이 & 키보드 높이 추적 (iOS 키보드 대응)
+  const [vp, setVp] = useState<{ h: number; kb: number }>({
+    h: typeof window !== 'undefined' ? window.innerHeight : 800,
+    kb: 0,
+  })
+
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden'
-      return () => {
-        document.body.style.overflow = ''
-      }
+    if (!open) return
+    lockBody()
+    const vv = window.visualViewport
+    const update = () => {
+      const h = vv ? vv.height : window.innerHeight
+      const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0
+      setVp({ h, kb })
+    }
+    update()
+    vv?.addEventListener('resize', update)
+    vv?.addEventListener('scroll', update)
+    return () => {
+      vv?.removeEventListener('resize', update)
+      vv?.removeEventListener('scroll', update)
+      unlockBody()
     }
   }, [open])
 
   if (!open) return null
+
+  const maxH = vp.kb > 0 ? vp.h - 8 : Math.round(vp.h * 0.92)
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      style={{ paddingBottom: vp.kb }}
+    >
       <div
         className="absolute inset-0 bg-black/40 animate-[fade_.15s_ease]"
+        style={{ touchAction: 'none' }}
         onClick={onClose}
       />
-      <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col animate-[slideup_.2s_ease]">
+      <div
+        className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl flex flex-col animate-[slideup_.2s_ease]"
+        style={{ maxHeight: maxH }}
+      >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <h2 className="text-lg font-bold">{title}</h2>
           <button
@@ -41,7 +95,14 @@ export function Sheet({
             <CloseIcon width={22} height={22} />
           </button>
         </div>
-        <div className="px-5 pb-5 overflow-y-auto overflow-x-hidden pb-safe">{children}</div>
+        <div
+          className="px-5 pb-8 overflow-y-auto overflow-x-hidden overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {children}
+          {/* 키보드가 없을 때 하단 여백(안전영역) */}
+          {vp.kb === 0 && <div className="pb-safe" />}
+        </div>
       </div>
       <style>{`
         @keyframes slideup { from { transform: translateY(30px); opacity:.6 } to { transform: none; opacity:1 } }
