@@ -5,6 +5,7 @@ import type { Account, AccountType, CardAccount, GroupAccount } from '../db/type
 import { accountBalance, cardSpentInMonth, cardInstallmentRemaining } from '../lib/calc'
 import { won, currentMonth } from '../lib/format'
 import { AccountSheet } from '../components/AccountSheet'
+import { useBoolSetting, setSetting, ALLOWANCE_ENABLED } from '../lib/settings'
 import { Progress, Empty } from '../components/ui'
 import {
   CardIcon,
@@ -30,6 +31,7 @@ export default function Accounts() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Account | undefined>()
   const [initialType, setInitialType] = useState<AccountType>('bank')
+  const allowanceOn = useBoolSetting(ALLOWANCE_ENABLED, true)
 
   if (!accounts || !txs) return <div className="p-6 text-slate-400">불러오는 중…</div>
 
@@ -137,6 +139,36 @@ export default function Accounts() {
           </section>
         )
       })}
+
+      {/* 기능 설정 */}
+      <section className="px-5 mb-6">
+        <h2 className="font-bold text-slate-700 mb-2">기능 설정</h2>
+        <label className="card px-4 py-3 flex items-center justify-between cursor-pointer">
+          <div>
+            <p className="font-semibold text-sm">🧧 용돈 기능 사용</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              끄면 홈에서 용돈 카드가 숨겨져요
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={allowanceOn}
+            onClick={() =>
+              setSetting(ALLOWANCE_ENABLED, allowanceOn ? 'false' : 'true')
+            }
+            className={`relative w-12 h-7 rounded-full transition ${
+              allowanceOn ? 'bg-brand' : 'bg-slate-300'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                allowanceOn ? 'translate-x-5' : ''
+              }`}
+            />
+          </button>
+        </label>
+      </section>
 
       <AccountSheet
         open={sheetOpen}

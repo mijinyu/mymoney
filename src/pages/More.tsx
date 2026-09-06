@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { db } from '../db/database'
 import { forceUpdate, BUILD_TIME } from '../lib/update'
+import { useBoolSetting, ALLOWANCE_ENABLED } from '../lib/settings'
 import {
   CoinIcon,
   PiggyIcon,
@@ -13,6 +14,7 @@ const TABLES = ['accounts', 'transactions', 'allowances', 'goals', 'categories']
 
 export default function More() {
   const fileRef = useRef<HTMLInputElement>(null)
+  const allowanceOn = useBoolSetting(ALLOWANCE_ENABLED, true)
 
   async function exportData() {
     const data: Record<string, unknown> = { _app: 'mymoney', _version: 1, _exportedAt: new Date().toISOString() }
@@ -58,7 +60,9 @@ export default function More() {
   }
 
   const menu = [
-    { to: '/allowance', label: '용돈 관리', desc: '월 용돈 예산·남은 금액', Icon: CoinIcon, color: 'bg-amber-100 text-amber-600' },
+    ...(allowanceOn
+      ? [{ to: '/allowance', label: '용돈 관리', desc: '월 용돈 예산·남은 금액', Icon: CoinIcon, color: 'bg-amber-100 text-amber-600' }]
+      : []),
     { to: '/goals', label: '저축 목표', desc: '돈 모으기 목표 관리', Icon: PiggyIcon, color: 'bg-brand/10 text-brand' },
     { to: '/categories', label: '카테고리 관리', desc: '지출·수입 분류 편집', Icon: GridIcon, color: 'bg-indigo-100 text-indigo-600' },
   ]

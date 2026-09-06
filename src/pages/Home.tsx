@@ -21,6 +21,7 @@ import {
   GroupIcon,
 } from '../components/icons'
 import { forceUpdate } from '../lib/update'
+import { useBoolSetting, ALLOWANCE_ENABLED } from '../lib/settings'
 import type { CardAccount } from '../db/types'
 
 export default function Home() {
@@ -32,6 +33,7 @@ export default function Home() {
     [month]
   )
   const goals = useLiveQuery(() => db.goals.toArray(), [])
+  const allowanceOn = useBoolSetting(ALLOWANCE_ENABLED, true)
 
   if (!accounts || !txs) return <div className="p-6 text-slate-400">불러오는 중…</div>
 
@@ -201,6 +203,7 @@ export default function Home() {
       )}
 
       {/* 용돈 */}
+      {allowanceOn && (
       <section className="px-5 mt-5">
         <Link to="/allowance" className="card p-4 flex items-center gap-3 active:bg-slate-50">
           <span className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
@@ -224,6 +227,7 @@ export default function Home() {
           <ArrowRight className="text-slate-300" width={20} height={20} />
         </Link>
       </section>
+      )}
 
       {/* 저축 목표 */}
       {goals && goals.length > 0 && (
