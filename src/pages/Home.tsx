@@ -7,6 +7,7 @@ import {
   allowanceSpent,
   upcomingCardBills,
   cardInstallmentThisMonth,
+  installmentChargeTotal,
 } from '../lib/calc'
 import { won, currentMonth, monthLabel, daysUntil } from '../lib/format'
 import { Progress } from '../components/ui'
@@ -49,6 +50,7 @@ export default function Home() {
   const totalCardBill = bills.reduce((s, b) => s + b.amount, 0)
 
   const summary = monthSummary(txs, month, { excludeCardWithdrawal: true })
+  const instThisMonth = installmentChargeTotal(txs, month)
   const allowanceUsed = allowanceSpent(txs, month)
   const allowanceLeft = (allowance?.amount ?? 0) - allowanceUsed
 
@@ -90,6 +92,12 @@ export default function Home() {
               <p className="font-bold">{won(summary.expense)}</p>
             </div>
           </div>
+          {instThisMonth > 0 && (
+            <p className="text-xs text-white/85 mt-3">
+              할부 제외 지출 <b>{won(summary.expense - instThisMonth)}</b>
+              <span className="text-white/60"> · 할부 {won(instThisMonth)}</span>
+            </p>
+          )}
         </div>
       </section>
 
