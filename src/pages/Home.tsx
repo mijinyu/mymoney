@@ -89,7 +89,11 @@ export default function Home() {
               const left = daysUntil(b.day || 1)
               const inst = cardInstallmentRemaining(b.card.id!, txs, month)
               return (
-                <div key={b.card.id} className="card p-4">
+                <Link
+                  key={b.card.id}
+                  to={`/history?acc=${b.card.id}`}
+                  className="card p-4 block active:bg-slate-50"
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
@@ -131,7 +135,7 @@ export default function Home() {
                       <Progress value={progress} max={target} />
                     </div>
                   )}
-                </div>
+                </Link>
               )
             })}
           </div>

@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
-import type { Transaction, TxType } from '../db/types'
+import type { Transaction, TxType, AccountType } from '../db/types'
 import {
   monthSummary,
   categoryBreakdown,
@@ -27,6 +28,9 @@ const CAT_COLORS = [
 
 type FilterKind = 'all' | TxType
 
+const accIcon = (t: AccountType) =>
+  t === 'card' ? '💳' : t === 'bank' ? '🏦' : t === 'cash' ? '💵' : '👥'
+
 interface HistoryEntry {
   key: string
   tx: Transaction
@@ -39,28 +43,57 @@ interface HistoryEntry {
 export default function History() {
   const [month, setMonth] = useState(currentMonth())
   const [filter, setFilter] = useState<FilterKind>('all')
+  const [searchParams, setSearchParams] = useSearchParams()
+  // 결제수단 필터 ('all' | 계좌 id)
+  const [accFilter, setAccFilter] = useState<number | 'all'>(() => {
+    const q = searchParams.get('acc')
+    return q ? Number(q) : 'all'
+  })
   const accounts = useLiveQuery(() => db.accounts.toArray(), [])
   const allTxs = useLiveQuery(() => db.transactions.toArray(), [])
   const openTx = useAddTx()
 
+  // URL의 acc 파라미터가 바뀌면(홈에서 카드 탭) 필터 반영
+  useEffect(() => {
+    const q = searchParams.get('acc')
+    setAccFilter(q ? Number(q) : 'all')
+  }, [searchParams])
+
   const accName = (id?: number) =>
     accounts?.find((a) => a.id === id)?.name ?? '삭제됨'
 
+  const setAcc = (v: number | 'all') => {
+    setAccFilter(v)
+    // URL도 동기화 (뒤로가기/공유 대비)
+    const next = new URLSearchParams(searchParams)
+    if (v === 'all') next.delete('acc')
+    else next.set('acc', String(v))
+    setSearchParams(next, { replace: true })
+  }
+
+  // 결제수단 필터를 적용한 거래 집합
+  const scopedTxs = useMemo(() => {
+    if (!allTxs) return []
+    if (accFilter === 'all') return allTxs
+    return allTxs.filter(
+      (t) => t.accountId === accFilter || t.toAccountId === accFilter
+    )
+  }, [allTxs, accFilter])
+
   const summary = useMemo(
-    () => (allTxs ? monthSummary(allTxs, month, { excludeCardWithdrawal: true }) : null),
-    [allTxs, month]
+    () => monthSummary(scopedTxs, month, { excludeCardWithdrawal: true }),
+    [scopedTxs, month]
   )
   const breakdown = useMemo(
-    () => (allTxs ? categoryBreakdown(allTxs, month) : []),
-    [allTxs, month]
+    () => categoryBreakdown(scopedTxs, month),
+    [scopedTxs, month]
   )
   const totalExpense = breakdown.reduce((s, b) => s + b.amount, 0)
 
   // 이번 달에 실제로 잡히는 항목으로 펼침 (지난달 할부의 이번 달 청구분 포함)
   const entries = useMemo<HistoryEntry[]>(() => {
-    if (!allTxs) return []
     const out: HistoryEntry[] = []
-    for (const t of allTxs) {
+    for (const t of scopedTxs) {
       if (t.type === 'expense' && isInstallment(t)) {
         const idx = monthDiff(month, t.date.slice(0, 7))
         if (idx < 0 || idx >= t.installmentMonths!) continue
@@ -81,7 +114,7 @@ export default function History() {
     return list.sort((a, b) =>
       a.date < b.date ? 1 : a.date > b.date ? -1 : b.tx.createdAt - a.tx.createdAt
     )
-  }, [allTxs, month, filter])
+  }, [scopedTxs, month, filter])
 
   // 날짜별 그룹핑
   const byDate = useMemo(() => {
@@ -212,6 +245,37 @@ export default function History() {
             </button>
           ))}
         </div>
+
+        {/* 결제수단 필터 */}
+        {accounts && accounts.length > 0 && (
+          <div className="flex gap-2 mb-3 overflow-x-auto pb-1 -mx-5 px-5">
+            <button
+              onClick={() => setAcc('all')}
+              className={`chip whitespace-nowrap shrink-0 ${
+                accFilter === 'all'
+                  ? 'bg-brand text-white border-brand'
+                  : 'bg-white border-slate-200 text-slate-500'
+              }`}
+            >
+              전체수단
+            </button>
+            {accounts
+              .filter((a) => !a.archived)
+              .map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => setAcc(a.id!)}
+                  className={`chip whitespace-nowrap shrink-0 ${
+                    accFilter === a.id
+                      ? 'bg-brand text-white border-brand'
+                      : 'bg-white border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {accIcon(a.type)} {a.name}
+                </button>
+              ))}
+          </div>
+        )}
 
         {byDate.length === 0 ? (
           <Empty

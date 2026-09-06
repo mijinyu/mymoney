@@ -53,6 +53,7 @@ export function TransactionSheet({
   const [accSheetOpen, setAccSheetOpen] = useState(false)
   const [addingCat, setAddingCat] = useState(false)
   const [newCatName, setNewCatName] = useState('')
+  const [customInst, setCustomInst] = useState(false)
 
   // 초기값 설정
   useEffect(() => {
@@ -85,6 +86,8 @@ export function TransactionSheet({
     setAccSheetOpen(false)
     setAddingCat(false)
     setNewCatName('')
+    const im = editing?.installmentMonths || 1
+    setCustomInst(im >= 2 && ![2, 3, 6, 9, 12, 24].includes(im))
   }, [open, editing])
 
   // 분류 즉석 추가
@@ -333,9 +336,12 @@ export function TransactionSheet({
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setInstallmentMonths(m)}
+                    onClick={() => {
+                      setInstallmentMonths(m)
+                      setCustomInst(false)
+                    }}
                     className={`chip ${
-                      installmentMonths === m
+                      !customInst && installmentMonths === m
                         ? 'bg-brand text-white border-brand'
                         : 'bg-white border-slate-200 text-slate-600'
                     }`}
@@ -343,7 +349,40 @@ export function TransactionSheet({
                     {m === 1 ? '일시불' : `${m}개월`}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomInst(true)
+                    if (installmentMonths < 2) setInstallmentMonths(2)
+                  }}
+                  className={`chip ${
+                    customInst
+                      ? 'bg-brand text-white border-brand'
+                      : 'bg-white border-dashed border-slate-300 text-brand font-semibold'
+                  }`}
+                >
+                  직접입력
+                </button>
               </div>
+              {customInst && (
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={2}
+                    max={60}
+                    autoFocus
+                    className="input w-28"
+                    value={installmentMonths >= 2 ? installmentMonths : ''}
+                    placeholder="개월수"
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10)
+                      setInstallmentMonths(Number.isNaN(n) ? 0 : Math.min(60, n))
+                    }}
+                  />
+                  <span className="text-sm text-slate-500">개월</span>
+                </div>
+              )}
               {installmentMonths >= 2 && amount > 0 && (
                 <p className="text-xs text-slate-500 mt-2">
                   매달 약 {Math.floor(amount / installmentMonths).toLocaleString('ko-KR')}원씩{' '}
