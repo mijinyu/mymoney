@@ -39,10 +39,22 @@ function installmentPortion(total: number, months: number, seqIndex: number): nu
   return base
 }
 
+/** 할부에서 개월수로 나눌 기준 금액 (총액 - 선납). 0~amount로 보정 */
+export function installmentBase(tx: Transaction): number {
+  const down = Math.min(Math.max(0, tx.installmentDownPayment || 0), tx.amount)
+  return tx.amount - down
+}
+
+/** 할부 월 청구액(선납 제외분을 개월수로 나눈 값) */
+export function installmentMonthly(tx: Transaction): number {
+  if (!isInstallment(tx)) return 0
+  return Math.floor(installmentBase(tx) / tx.installmentMonths!)
+}
+
 /**
  * 지출 거래가 특정 월(month, 'YYYY-MM')에 실제로 청구되는 금액.
  * - 일반 결제: 결제월에 전액
- * - 할부: 결제월부터 N개월간 매달 분할 청구
+ * - 할부: (총액-선납)을 N개월 분할. 선납은 첫 달에 한 번 더 얹어서 청구
  */
 export function expenseChargeInMonth(tx: Transaction, month: string): number {
   if (tx.type !== 'expense') return 0
@@ -50,7 +62,9 @@ export function expenseChargeInMonth(tx: Transaction, month: string): number {
     const start = tx.date.slice(0, 7)
     const idx = monthDiff(month, start)
     if (idx < 0 || idx >= tx.installmentMonths!) return 0
-    return installmentPortion(tx.amount, tx.installmentMonths!, idx)
+    const down = Math.min(Math.max(0, tx.installmentDownPayment || 0), tx.amount)
+    const portion = installmentPortion(installmentBase(tx), tx.installmentMonths!, idx)
+    return idx === 0 ? portion + down : portion
   }
   return tx.date.startsWith(month) ? tx.amount : 0
 }
@@ -178,18 +192,19 @@ export function cardInstallments(
     )
     .map((t) => {
       const months = t.installmentMonths!
+      const base = installmentBase(t)
       const start = t.date.slice(0, 7)
       const elapsed = monthDiff(currentMonth, start) // 결제월이면 0
       const paidCount = Math.max(0, Math.min(months, elapsed + 1))
       const remainingCount = Math.max(0, months - paidCount)
       let remainingAmount = 0
       for (let i = paidCount; i < months; i++) {
-        remainingAmount += installmentPortion(t.amount, months, i)
+        remainingAmount += installmentPortion(base, months, i)
       }
       return {
         tx: t,
         months,
-        monthly: Math.floor(t.amount / months),
+        monthly: Math.floor(base / months),
         paidCount,
         remainingCount,
         remainingAmount,

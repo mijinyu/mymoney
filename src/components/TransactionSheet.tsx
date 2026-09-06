@@ -48,6 +48,7 @@ export function TransactionSheet({
   const [countsForBenefit, setCountsForBenefit] = useState(true)
   const [memberName, setMemberName] = useState('')
   const [installmentMonths, setInstallmentMonths] = useState(1) // 1 = 일시불
+  const [installmentDown, setInstallmentDown] = useState(0) // 추가납부(선납) 금액
 
   // 결제수단 추가 시트 / 분류 즉석 추가
   const [accSheetOpen, setAccSheetOpen] = useState(false)
@@ -71,6 +72,7 @@ export function TransactionSheet({
       setCountsForBenefit(editing.countsForBenefit !== false)
       setMemberName(editing.memberName || '')
       setInstallmentMonths(editing.installmentMonths || 1)
+      setInstallmentDown(editing.installmentDownPayment || 0)
     } else {
       setType('expense')
       setAmount(0)
@@ -83,6 +85,7 @@ export function TransactionSheet({
       setCountsForBenefit(true)
       setMemberName('')
       setInstallmentMonths(1)
+      setInstallmentDown(0)
     }
     setAccSheetOpen(false)
     setAddingCat(false)
@@ -145,6 +148,13 @@ export function TransactionSheet({
       installmentMonths:
         type === 'expense' && isCardSelected && installmentMonths >= 2
           ? installmentMonths
+          : undefined,
+      installmentDownPayment:
+        type === 'expense' &&
+        isCardSelected &&
+        installmentMonths >= 2 &&
+        installmentDown > 0
+          ? Math.min(installmentDown, amount)
           : undefined,
       memberName: isGroupSelected ? memberName || undefined : undefined,
       createdAt: editing?.createdAt ?? Date.now(),
@@ -389,10 +399,39 @@ export function TransactionSheet({
                   <span className="text-sm text-slate-500">개월</span>
                 </div>
               )}
+              {installmentMonths >= 2 && (
+                <div className="mt-3">
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">
+                    추가납부(선납) 금액
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      inputMode="numeric"
+                      className="input text-right font-semibold"
+                      value={installmentDown ? installmentDown.toLocaleString('ko-KR') : ''}
+                      placeholder="0"
+                      onChange={(e) => {
+                        const d = e.target.value.replace(/[^0-9]/g, '')
+                        setInstallmentDown(d ? parseInt(d, 10) : 0)
+                      }}
+                    />
+                    <span className="text-sm font-semibold text-slate-500">원</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    이 금액은 첫 달에 한 번 청구되고, 나머지를 개월수로 나눠요.
+                  </p>
+                </div>
+              )}
               {installmentMonths >= 2 && amount > 0 && (
-                <p className="text-xs text-slate-500 mt-2">
-                  매달 약 {Math.floor(amount / installmentMonths).toLocaleString('ko-KR')}원씩{' '}
-                  {installmentMonths}개월 청구돼요.
+                <p className="text-xs text-brand font-medium mt-2">
+                  {installmentDown > 0 &&
+                    `선납 ${Math.min(installmentDown, amount).toLocaleString('ko-KR')}원 제외, `}
+                  매달 약{' '}
+                  {Math.floor(
+                    Math.max(0, amount - Math.min(installmentDown, amount)) /
+                      installmentMonths
+                  ).toLocaleString('ko-KR')}
+                  원씩 {installmentMonths}개월 청구돼요.
                 </p>
               )}
             </Field>

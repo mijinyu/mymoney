@@ -73,8 +73,10 @@ export interface Transaction {
   countsForBenefit?: boolean
   /** 카드값 자동이체(출금) 기록인지 */
   isCardWithdrawal?: boolean
-  /** 할부 개월수 (2 이상이면 할부). amount는 총 결제금액이고, 매달 amount/개월만큼 청구됨 */
+  /** 할부 개월수 (2 이상이면 할부). amount는 총 결제금액 */
   installmentMonths?: number
+  /** 할부 추가납부(선납) 금액. 이 금액은 첫 달에 한 번 청구되고, 나머지(amount-선납)를 개월수로 나눔 */
+  installmentDownPayment?: number
   /** 모임통장: 누가 낸/받은 돈인지 */
   memberName?: string
   createdAt: number
