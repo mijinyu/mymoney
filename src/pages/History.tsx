@@ -9,6 +9,7 @@ import {
   isInstallment,
   monthDiff,
   expenseChargeInMonth,
+  installmentChargeTotal,
 } from '../lib/calc'
 import {
   won,
@@ -89,6 +90,10 @@ export default function History() {
     [scopedTxs, month]
   )
   const totalExpense = breakdown.reduce((s, b) => s + b.amount, 0)
+  const instThisMonth = useMemo(
+    () => installmentChargeTotal(scopedTxs, month),
+    [scopedTxs, month]
+  )
 
   // 이번 달에 실제로 잡히는 항목으로 펼침 (지난달 할부의 이번 달 청구분 포함)
   const entries = useMemo<HistoryEntry[]>(() => {
@@ -181,6 +186,18 @@ export default function History() {
             </p>
           </div>
         </div>
+        {instThisMonth > 0 && (
+          <div className="mt-2 flex items-center justify-center gap-2 text-xs">
+            <span className="text-slate-500">
+              할부 제외 지출{' '}
+              <b className="text-slate-800">
+                {won((summary?.expense ?? 0) - instThisMonth)}
+              </b>
+            </span>
+            <span className="text-slate-300">·</span>
+            <span className="text-indigo-500">할부 {won(instThisMonth)}</span>
+          </div>
+        )}
       </section>
 
       {/* 카테고리별 지출 통계 */}

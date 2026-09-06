@@ -214,6 +214,13 @@ export function cardInstallments(
     .sort((a, b) => (a.tx.date < b.tx.date ? -1 : 1))
 }
 
+/** 이번 달 할부 청구액 합계 (계좌 무관, 전체 거래 기준) */
+export function installmentChargeTotal(txs: Transaction[], month: string): number {
+  return txs
+    .filter((t) => t.type === 'expense' && isInstallment(t))
+    .reduce((s, t) => s + expenseChargeInMonth(t, month), 0)
+}
+
 /** 특정 카드의 '이번 달 할부 청구액'과 건수 */
 export function cardInstallmentThisMonth(
   cardId: number,
