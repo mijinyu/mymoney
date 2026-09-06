@@ -22,11 +22,13 @@ export function AccountSheet({
   onClose,
   editing,
   initialType = 'bank',
+  onCreated,
 }: {
   open: boolean
   onClose: () => void
   editing?: Account
   initialType?: AccountType
+  onCreated?: (id: number) => void
 }) {
   const banks = useLiveQuery(
     () => db.accounts.filter((a) => a.type === 'bank' && !a.archived).toArray(),
@@ -100,7 +102,10 @@ export function AccountSheet({
       payload = { ...commonBase, type: 'cash' }
     }
     if (editing?.id) await db.accounts.update(editing.id, payload)
-    else await db.accounts.add(payload)
+    else {
+      const newId = await db.accounts.add(payload)
+      onCreated?.(newId as number)
+    }
     onClose()
   }
 

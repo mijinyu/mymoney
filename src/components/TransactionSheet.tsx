@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
-import type { Transaction, TxType, Account } from '../db/types'
+import type { Transaction, TxType, Account, AccountType } from '../db/types'
 import { Sheet, Field, MoneyInput } from './ui'
 import { todayStr } from '../lib/format'
-import { TransferIcon } from './icons'
+import { TransferIcon, PlusIcon } from './icons'
+import { AccountSheet } from './AccountSheet'
+
+const accIcon = (t: AccountType) =>
+  t === 'card' ? '💳' : t === 'bank' ? '🏦' : t === 'cash' ? '💵' : '👥'
 
 const typeTabs: { key: TxType; label: string; color: string }[] = [
   { key: 'expense', label: '지출', color: 'bg-rose-500' },
@@ -45,6 +49,11 @@ export function TransactionSheet({
   const [memberName, setMemberName] = useState('')
   const [installmentMonths, setInstallmentMonths] = useState(1) // 1 = 일시불
 
+  // 결제수단 추가 시트 / 분류 즉석 추가
+  const [accSheetOpen, setAccSheetOpen] = useState(false)
+  const [addingCat, setAddingCat] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+
   // 초기값 설정
   useEffect(() => {
     if (!open) return
@@ -73,7 +82,29 @@ export function TransactionSheet({
       setMemberName('')
       setInstallmentMonths(1)
     }
+    setAccSheetOpen(false)
+    setAddingCat(false)
+    setNewCatName('')
   }, [open, editing])
+
+  // 분류 즉석 추가
+  async function addCategory() {
+    const nm = newCatName.trim()
+    if (!nm) return
+    const kind = type === 'income' ? 'income' : 'expense'
+    const existing = (categories || []).find(
+      (c) => c.kind === kind && c.name === nm
+    )
+    if (existing) {
+      setCategory(existing.name)
+    } else {
+      const max = (categories || []).reduce((m, c) => Math.max(m, c.order || 0), 0)
+      await db.categories.add({ name: nm, emoji: '✏️', kind, order: max + 1 })
+      setCategory(nm)
+    }
+    setNewCatName('')
+    setAddingCat(false)
+  }
 
   const selectedAccount = accounts?.find((a) => a.id === accountId)
   const isCardSelected = selectedAccount?.type === 'card'
@@ -152,7 +183,7 @@ export function TransactionSheet({
           <Field label="날짜">
             <input
               type="date"
-              className="input"
+              className="input block w-full min-w-0 max-w-full appearance-none"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
@@ -196,18 +227,35 @@ export function TransactionSheet({
             </div>
           ) : (
             <Field label={type === 'income' ? '받은 곳(입금 계좌)' : '결제 수단'}>
-              <select
-                className="input"
-                value={accountId ?? ''}
-                onChange={(e) => setAccountId(Number(e.target.value) || undefined)}
-              >
-                <option value="">선택</option>
+              <div className="grid grid-cols-2 gap-2">
                 {accounts?.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {accountLabel(a)}
-                  </option>
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setAccountId(a.id)}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition ${
+                      accountId === a.id
+                        ? 'border-brand bg-brand/10 ring-1 ring-brand'
+                        : 'border-slate-200 bg-white'
+                    }`}
+                  >
+                    <span
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
+                      style={{ background: a.color + '22' }}
+                    >
+                      {accIcon(a.type)}
+                    </span>
+                    <span className="text-sm font-medium truncate">{a.name}</span>
+                  </button>
                 ))}
-              </select>
+                <button
+                  type="button"
+                  onClick={() => setAccSheetOpen(true)}
+                  className="flex items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-200 px-3 py-2.5 text-sm font-semibold text-brand"
+                >
+                  <PlusIcon width={16} height={16} /> 추가
+                </button>
+              </div>
             </Field>
           )}
 
@@ -228,7 +276,34 @@ export function TransactionSheet({
                     {c.emoji} {c.name}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setAddingCat((v) => !v)}
+                  className="chip bg-white border-dashed border-slate-300 text-brand font-semibold"
+                >
+                  ＋ 추가
+                </button>
               </div>
+              {addingCat && (
+                <div className="flex gap-2 mt-2">
+                  <input
+                    className="input"
+                    autoFocus
+                    value={newCatName}
+                    placeholder="새 분류 이름"
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addCategory()}
+                  />
+                  <button
+                    type="button"
+                    className="btn-primary px-4 shrink-0 disabled:opacity-40"
+                    disabled={!newCatName.trim()}
+                    onClick={addCategory}
+                  >
+                    추가
+                  </button>
+                </div>
+              )}
             </Field>
           )}
 
@@ -326,6 +401,15 @@ export function TransactionSheet({
           </button>
         </>
       )}
+
+      {/* 결제수단 즉석 추가 */}
+      <AccountSheet
+        open={accSheetOpen}
+        onClose={() => setAccSheetOpen(false)}
+        initialType={type === 'income' ? 'bank' : 'card'}
+        onCreated={(id) => setAccountId(id)}
+        key={'acc-' + String(accSheetOpen)}
+      />
     </Sheet>
   )
 }

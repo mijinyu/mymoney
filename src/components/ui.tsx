@@ -41,7 +41,7 @@ export function Sheet({
             <CloseIcon width={22} height={22} />
           </button>
         </div>
-        <div className="px-5 pb-5 overflow-y-auto pb-safe">{children}</div>
+        <div className="px-5 pb-5 overflow-y-auto overflow-x-hidden pb-safe">{children}</div>
       </div>
       <style>{`
         @keyframes slideup { from { transform: translateY(30px); opacity:.6 } to { transform: none; opacity:1 } }
