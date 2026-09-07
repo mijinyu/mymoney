@@ -62,6 +62,31 @@ export default function History() {
 
   const accName = (id?: number) =>
     accounts?.find((a) => a.id === id)?.name ?? '삭제됨'
+  const accType = (id?: number) => accounts?.find((a) => a.id === id)?.type
+
+  // 각 거래 직후의 '해당 계좌 잔액' (통장식). 카드는 잔액 개념이 없어 제외
+  const balanceAfterTx = useMemo(() => {
+    const map = new Map<number, number>()
+    if (!allTxs || !accounts) return map
+    const bal = new Map<number, number>()
+    for (const a of accounts) bal.set(a.id!, a.openingBalance || 0)
+    const sorted = [...allTxs].sort((a, b) =>
+      a.date < b.date ? -1 : a.date > b.date ? 1 : a.createdAt - b.createdAt
+    )
+    for (const t of sorted) {
+      if (t.type === 'income') {
+        bal.set(t.accountId, (bal.get(t.accountId) || 0) + t.amount)
+      } else if (t.type === 'expense') {
+        bal.set(t.accountId, (bal.get(t.accountId) || 0) - t.amount)
+      } else if (t.type === 'transfer') {
+        bal.set(t.accountId, (bal.get(t.accountId) || 0) - t.amount)
+        if (t.toAccountId != null)
+          bal.set(t.toAccountId, (bal.get(t.toAccountId) || 0) + t.amount)
+      }
+      if (t.id != null) map.set(t.id, bal.get(t.accountId) || 0)
+    }
+    return map
+  }, [allTxs, accounts])
 
   const setAcc = (v: number | 'all') => {
     setAccFilter(v)
@@ -331,6 +356,16 @@ export default function History() {
                             {t.category && t.type !== 'transfer' ? ` · ${t.category}` : ''}
                             {t.isAllowance ? ' · 용돈' : ''}
                           </p>
+                          {t.type !== 'transfer' &&
+                            !e.total &&
+                            accType(t.accountId) &&
+                            accType(t.accountId) !== 'card' &&
+                            t.id != null &&
+                            balanceAfterTx.has(t.id) && (
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                잔액 {won(balanceAfterTx.get(t.id)!)}
+                              </p>
+                            )}
                         </div>
                         <p
                           className={`font-bold text-sm ${

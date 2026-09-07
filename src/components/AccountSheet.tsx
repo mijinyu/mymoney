@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
+import { useMemo } from 'react'
 import type { Account, AccountType, GroupMember } from '../db/types'
 import { Sheet, Field, MoneyInput } from './ui'
 import { TrashIcon } from './icons'
+import { txDeltaForAccount } from '../lib/calc'
 
 const COLORS = [
   '#16a34a', '#0ea5e9', '#6366f1', '#f59e0b',
@@ -34,6 +36,13 @@ export function AccountSheet({
     () => db.accounts.filter((a) => a.type === 'bank' && !a.archived).toArray(),
     []
   )
+  const allTxs = useLiveQuery(() => db.transactions.toArray(), [])
+
+  // 수정 중인 계좌의 거래 반영분 (현재잔액 = 초기잔액 + delta)
+  const delta = useMemo(() => {
+    if (!editing?.id || !allTxs) return 0
+    return allTxs.reduce((s, t) => s + txDeltaForAccount(t, editing.id!), 0)
+  }, [allTxs, editing])
 
   const [type, setType] = useState<AccountType>(initialType)
   const [name, setName] = useState('')
@@ -54,7 +63,8 @@ export function AccountSheet({
     if (editing) {
       setType(editing.type)
       setName(editing.name)
-      setOpening(editing.openingBalance)
+      // 수정 시엔 '현재 잔액'을 보여준다 (초기잔액 + 거래 반영분)
+      setOpening((editing.openingBalance || 0) + delta)
       setColor(editing.color)
       if (editing.type === 'card') {
         setBenefitTarget(editing.benefitTarget || 0)
@@ -75,13 +85,15 @@ export function AccountSheet({
       setMembers([])
       setNewMember('')
     }
-  }, [open, editing, initialType])
+  }, [open, editing, initialType, delta])
 
   async function save() {
     if (!name.trim()) return
     const commonBase = {
       name: name.trim(),
-      openingBalance: opening,
+      // 입력값은 '현재 잔액'. 저장 시엔 거래 반영분을 빼서 초기잔액으로 되돌려 저장
+      // (그래야 현재잔액 = openingBalance + delta 가 입력값과 같아짐)
+      openingBalance: editing ? opening - delta : opening,
       color,
       createdAt: editing?.createdAt ?? Date.now(),
     }
